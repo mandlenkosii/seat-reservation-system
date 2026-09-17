@@ -33,6 +33,21 @@ app.post("/api/holds", (req, res) => {
      res.status(201).json(result);
 });
 
+app.post("/api/holds/extend", (req, res) => {
+  const { email, code } = req.body;
+
+  const result = reservationService.extendHold(email, code);
+
+  if (!result.success) {
+    return res.status(result.statusCode).json({
+      success: false,
+      error: result.error
+    });
+  }
+
+  res.json(result);
+});
+
 const PORT = 3000;
 
 app.listen(PORT, () => {

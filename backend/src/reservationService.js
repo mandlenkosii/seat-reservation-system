@@ -141,8 +141,81 @@ function placeHold(seatNumber, email) {
     };
 }
 
+// Extend an active hold
+function extendHold(email, code) {
+  // Find the hold
+  const hold = holds.find(
+    (hold) =>
+      hold.email === email &&
+      hold.code === code
+  );
+
+  // Check if the hold exists
+  if (!hold) {
+    return {
+      success: false,
+      statusCode: 404,
+      error: "Hold not found."
+    };
+  }
+
+  // Check if the hold is still active
+  if (hold.status !== "active") {
+    return {
+      success: false,
+      statusCode: 409,
+      error: "This hold is no longer active."
+    };
+  }
+
+  // Check if the hold has expired
+  if (Date.now() >= hold.expirationTime) {
+    hold.status = "expired";
+
+    const seat = seats.find(
+      (seat) => seat.number === hold.seatNumber
+    );
+
+    if (seat) {
+      seat.status = "available";
+    }
+
+    return {
+      success: false,
+      statusCode: 409,
+      error: "This hold has expired."
+    };
+  }
+
+  // Check the maximum number of extensions
+  if (hold.extensions >= config.maxExtensions) {
+    return {
+      success: false,
+      statusCode: 409,
+      error: `You can only extend a hold ${config.maxExtensions} times.`
+    };
+  }
+
+  // Reset the expiry time
+  hold.expirationTime = Date.now() + config.holdDuration;
+
+  // Increase the extension count
+  hold.extensions++;
+
+  return {
+    success: true,
+    hold: {
+      seatNumber: hold.seatNumber,
+      code: hold.code,
+      expirationTime: hold.expirationTime,
+      extensions: hold.extensions
+    }
+  };
+}
+
 module.exports = {
   getSeats,
   placeHold,
-  removeExpiredHolds
+  removeExpiredHolds,
+  extendHold
 };
