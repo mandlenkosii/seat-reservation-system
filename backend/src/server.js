@@ -48,6 +48,21 @@ app.post("/api/holds/extend", (req, res) => {
   res.json(result);
 });
 
+app.post("/api/holds/confirm", (req, res) => {
+  const { email, code } = req.body;
+
+  const result = reservationService.confirmHold(email, code);
+
+  if (!result.success) {
+    return res.status(result.statusCode).json({
+      success: false,
+      error: result.error
+    });
+  }
+
+  res.json(result);
+});
+
 const PORT = 3000;
 
 app.listen(PORT, () => {

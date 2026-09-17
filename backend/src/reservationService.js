@@ -213,9 +213,91 @@ function extendHold(email, code) {
   };
 }
 
+// Confirm an active hold
+function confirmHold(email, code) {
+  // Find the hold using the email and code
+  const hold = holds.find(
+    (hold) =>
+      hold.email === email &&
+      hold.code === code
+  );
+
+  // Check if the hold exists
+  if (!hold) {
+    return {
+      success: false,
+      statusCode: 404,
+      error: "Hold not found."
+    };
+  }
+
+  // If the hold is already confirmed,
+  // return the same success response.
+  if (hold.status === "confirmed") {
+    return {
+      success: true,
+      hold: {
+        seatNumber: hold.seatNumber,
+        code: hold.code,
+        status: hold.status
+      }
+    };
+  }
+
+  // Check if the hold is still active
+  if (hold.status !== "active") {
+    return {
+      success: false,
+      statusCode: 409,
+      error: "This hold is no longer active."
+    };
+  }
+
+  // Check if the hold has expired
+  if (Date.now() >= hold.expirationTime) {
+    hold.status = "expired";
+
+    const seat = seats.find(
+      (seat) => seat.number === hold.seatNumber
+    );
+
+    if (seat) {
+      seat.status = "available";
+    }
+
+    return {
+      success: false,
+      statusCode: 409,
+      error: "This hold has expired."
+    };
+  }
+
+  // Confirm the hold
+  hold.status = "confirmed";
+
+  // Change the seat status
+  const seat = seats.find(
+    (seat) => seat.number === hold.seatNumber
+  );
+
+  if (seat) {
+    seat.status = "confirmed";
+  }
+
+  return {
+    success: true,
+    hold: {
+      seatNumber: hold.seatNumber,
+      code: hold.code,
+      status: hold.status
+    }
+  };
+}
+
 module.exports = {
   getSeats,
   placeHold,
   removeExpiredHolds,
-  extendHold
+  extendHold,
+  confirmHold
 };
