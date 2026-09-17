@@ -1,0 +1,100 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+}
+
+.app {
+  max-width: 1000px;
+  margin: auto;
+}
+
+nav {
+  background: #222;
+  color: white;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+nav h2 {
+  margin-right: auto;
+}
+
+button {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+main {
+  padding: 30px;
+}
+
+input,
+select {
+  padding: 12px;
+  margin: 5px;
+}
+
+.seat-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 15px;
+  margin-top: 30px;
+}
+
+.seat {
+  padding: 20px;
+  text-align: center;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+.seat small {
+  display: block;
+  margin-top: 5px;
+}
+
+.available {
+  background: #b7e4c7;
+}
+
+.held {
+  background: #ffd166;
+}
+
+.confirmed {
+  background: #ef476f;
+  color: white;
+}
+
+.message {
+  margin-top: 20px;
+  font-weight: bold;
+}
+
+.event {
+  background: white;
+  padding: 15px;
+  margin-top: 10px;
+  border-radius: 5px;
+}
+
+.countdown {
+  margin-top: 20px;
+  padding: 15px;
+  background: white;
+  border-radius: 8px;
+}
+
+.countdown p {
+  font-size: 20px;
+  font-weight: bold;
+}
