@@ -14,7 +14,88 @@ for (let i = 1; i <= config.totalSeats; i++) {
 function getSeats() {
   return seats;
 }
+//Generate a unique hold code
+function generateHoldCode() {
+    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let code = "";
+for (let i = 0; i < 6; i++) {
+    const randomIndex = Math.floor(Math.random() * characters.length);
+    code += characters[randomIndex];
+}
+    return code;
+}
+
+// Function to check if the code is already in use
+function codeExists(code) {
+    return holds.some(hold => hold.code === code);
+}
+
+// Function to hold a seat
+function placeHold(seatNumber, email) {
+    // Check if the email was provided
+    if (!email) {
+        return { success: false, statusCode: 400, error: "Email is required." };
+    }
+
+    // Check if the seat number was provided
+    if (!seatNumber) {
+        return { success: false, statusCode: 400, error: "Seat number is required." };
+    }
+
+    //Finding the requested seat
+    const seat = seats.find((seat) => seat.number === Number(seatNumber));
+    if (!seat) {
+        return { success: false, statusCode: 404, error: "Seat not found." };
+    }
+
+    // Check if the seat is available
+    if (seat.status !== "available") {
+        return { success: false, statusCode: 400, error: "Seat is not available." };
+    }
+
+    // Count the user's active holds
+    const activeHolds = holds.filter((hold) => hold.email === email && hold.status === "active");
+
+    if (activeHolds.length >= config.maxActiveHolds) {
+        return { success: false, statusCode: 400, error: `You have reached the maximum number of active holds.${config.maxActiveHolds}` };
+    }
+
+    //Generate a unique hold code
+    let code = generateHoldCode();
+
+    while (codeExists(code)) {
+        code = generateHoldCode();
+    }
+
+    //Calculate the expiration time for the hold
+    const expirationTime = Date.now() + config.holdDuration;
+
+    // Create a new hold 
+    const hold = {
+        email,
+        seatNumber : Number(seatNumber),
+        code,
+        expirationTime,
+        extensions: 0,
+        status: "active"
+    };
+
+    holds.push(hold);
+
+    //Change the seat status to "held"
+    seat.status = "held";
+
+    return { success: true,
+        hold : {
+            seatNumber: hold.seatNumber,
+            code: hold.code,
+            expirationTime: hold.expirationTime
+        }   
+
+    };
+}
 
 module.exports = {
-  getSeats
+  getSeats,
+  placeHold
 };

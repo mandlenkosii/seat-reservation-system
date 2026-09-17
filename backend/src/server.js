@@ -17,6 +17,22 @@ app.get("/api/seats", (req, res) => {
   });
 });
 
+app.post("/api/holds", (req, res) => {
+  const { seatNumber, email } = req.body;
+
+
+    const result = reservationService.placeHold(seatNumber, email);
+
+    if (!result.success) {
+        return res.status(result.statusCode).json({
+            success: false,
+            error: result.error
+        });
+    }
+
+     res.status(201).json(result);
+});
+
 const PORT = 3000;
 
 app.listen(PORT, () => {
