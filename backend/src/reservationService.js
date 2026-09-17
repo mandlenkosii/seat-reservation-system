@@ -1,9 +1,9 @@
 const config = require("./config");
 const eventLog = require("./eventLog");
-
 const seats = [];
 const holds = [];
 const waitlist = [];
+const clock = require("./clock");
 
 // Create the seats when the application starts
 for (let i = 1; i <= config.totalSeats; i++) {
@@ -20,7 +20,7 @@ function getSeats() {
 }
 //Generate a unique hold code
 function generateHoldCode() {
-    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ23456789";
+    const characters = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
     let code = "";
 for (let i = 0; i < 6; i++) {
     const randomIndex = Math.floor(Math.random() * characters.length);
@@ -36,7 +36,7 @@ function codeExists(code) {
 
 // Remove expired holds
 function removeExpiredHolds() {
-  const currentTime = Date.now();
+  const currentTime = clock.now();
 
   holds.forEach((hold) => {
     if (
@@ -97,12 +97,13 @@ function placeHold(seatNumber, email) {
     }
 
     // Count the user's holds from the last hour
-    const oneHourAgo = Date.now() - config.holdLimitWindow;
+    const oneHourAgo = clock.now() - config.holdLimitWindow;
 
     const holdsLastHour = holds.filter(
     (hold) =>
         hold.email === email &&
-        hold.createdAt >= oneHourAgo
+        hold.createdAt >= oneHourAgo &&
+        !hold.fromWaitlist
     );
 
     if (holdsLastHour.length >= config.maxHoldsPerHour) {
@@ -121,7 +122,7 @@ function placeHold(seatNumber, email) {
     }
 
     //Calculate the expiration time for the hold
-    const expirationTime = Date.now() + config.holdDuration;
+    const expirationTime = clock.now() + config.holdDuration;
 
     // Create a new hold 
     const hold = {
@@ -131,7 +132,7 @@ function placeHold(seatNumber, email) {
         expirationTime,
         extensions: 0,
         status: "active",
-        createdAt: Date.now()   
+        createdAt: clock.now()   
     };
 
     holds.push(hold);
@@ -183,7 +184,7 @@ function extendHold(email, code) {
   }
 
   // Check if the hold has expired
-  if (Date.now() >= hold.expirationTime) {
+  if (clock.now() >= hold.expirationTime) {
     hold.status = "expired";
 
     const seat = seats.find(
@@ -211,7 +212,7 @@ function extendHold(email, code) {
   }
 
   // Reset the expiry time
-  hold.expirationTime = Date.now() + config.holdDuration;
+  hold.expirationTime = clock.now() + config.holdDuration;
 
   // Increase the extension count
   hold.extensions++;
@@ -273,7 +274,7 @@ function confirmHold(email, code) {
   }
 
   // Check if the hold has expired
-  if (Date.now() >= hold.expirationTime) {
+  if (clock.now() >= hold.expirationTime) {
     hold.status = "expired";
 
     const seat = seats.find(
@@ -448,7 +449,7 @@ function joinWaitlist(email) {
   // Add user to the waitlist
   waitlist.push({
     email,
-    joinedAt: Date.now()
+    joinedAt: clock.now()
   });
 
   eventLog.addEvent("waitlist_joined", {
@@ -489,7 +490,7 @@ function promoteFromWaitlist() {
   }
 
   // Create a normal hold
-  const expirationTime = Date.now() + config.holdDuration;
+  const expirationTime = clock.now() + config.holdDuration;
 
   const hold = {
     email: waitingUser.email,
@@ -498,7 +499,7 @@ function promoteFromWaitlist() {
     expirationTime,
     extensions: 0,
     status: "active",
-    createdAt: Date.now(),
+    createdAt: clock.now(),
     fromWaitlist: true
   };
 
@@ -520,6 +521,23 @@ function promoteFromWaitlist() {
   );
 }
 
+function reset() {
+  seats.length = 0;
+  holds.length = 0;
+  waitlist.length = 0;
+
+  for (let i = 1; i <= config.totalSeats; i++) {
+    seats.push({
+      number: i,
+      status: "available"
+    });
+  }
+}
+
+function getHolds() {
+  return holds;
+}
+
 module.exports = {
   getSeats,
   placeHold,
@@ -527,5 +545,7 @@ module.exports = {
   joinWaitlist,
   extendHold,
   confirmHold,
-  releaseHold
+  releaseHold,
+  reset,
+  getHolds
 };
