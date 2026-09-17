@@ -60,6 +60,23 @@ function placeHold(seatNumber, email) {
         return { success: false, statusCode: 400, error: `You have reached the maximum number of active holds.${config.maxActiveHolds}` };
     }
 
+    // Count the user's holds from the last hour
+    const oneHourAgo = Date.now() - config.holdLimitWindow;
+
+    const holdsLastHour = holds.filter(
+    (hold) =>
+        hold.email === email &&
+        hold.createdAt >= oneHourAgo
+    );
+
+    if (holdsLastHour.length >= config.maxHoldsPerHour) {
+        return {
+            success: false,
+            statusCode: 429,
+            error: `You can only make ${config.maxHoldsPerHour} holds per hour.`
+        };
+    }
+
     //Generate a unique hold code
     let code = generateHoldCode();
 
@@ -77,7 +94,8 @@ function placeHold(seatNumber, email) {
         code,
         expirationTime,
         extensions: 0,
-        status: "active"
+        status: "active",
+        createdAt: Date.now()   
     };
 
     holds.push(hold);
