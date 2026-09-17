@@ -12,7 +12,9 @@ for (let i = 1; i <= config.totalSeats; i++) {
 }
 
 function getSeats() {
-  return seats;
+    removeExpiredHolds(); // Remove expired holds before returning the seats    
+    
+    return seats;
 }
 //Generate a unique hold code
 function generateHoldCode() {
@@ -30,8 +32,34 @@ function codeExists(code) {
     return holds.some(hold => hold.code === code);
 }
 
+// Remove expired holds
+function removeExpiredHolds() {
+  const currentTime = Date.now();
+
+  holds.forEach((hold) => {
+    if (
+      hold.status === "active" &&
+      currentTime >= hold.expirationTime
+    ) {
+      hold.status = "expired";
+
+      const seat = seats.find(
+        (seat) => seat.number === hold.seatNumber
+      );
+
+      if (seat) {
+        seat.status = "available";
+      }
+    }
+  });
+}
+
 // Function to hold a seat
 function placeHold(seatNumber, email) {
+
+    // Remove expired holds before placing a new hold
+    removeExpiredHolds();
+
     // Check if the email was provided
     if (!email) {
         return { success: false, statusCode: 400, error: "Email is required." };
@@ -115,5 +143,6 @@ function placeHold(seatNumber, email) {
 
 module.exports = {
   getSeats,
-  placeHold
+  placeHold,
+  removeExpiredHolds
 };
