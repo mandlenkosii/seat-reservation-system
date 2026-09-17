@@ -1,4 +1,5 @@
 const config = require("./config");
+const eventLog = require("./eventLog");
 
 const seats = [];
 const holds = [];
@@ -19,7 +20,7 @@ function getSeats() {
 }
 //Generate a unique hold code
 function generateHoldCode() {
-    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ23456789";
     let code = "";
 for (let i = 0; i < 6; i++) {
     const randomIndex = Math.floor(Math.random() * characters.length);
@@ -43,6 +44,11 @@ function removeExpiredHolds() {
       currentTime >= hold.expirationTime
     ) {
       hold.status = "expired";
+      eventLog.addEvent("hold_expired", {
+         email: hold.email,
+        seatNumber: hold.seatNumber,
+        code: hold.code
+        });
 
       const seat = seats.find(
         (seat) => seat.number === hold.seatNumber
@@ -133,6 +139,12 @@ function placeHold(seatNumber, email) {
     //Change the seat status to "held"
     seat.status = "held";
 
+    eventLog.addEvent("hold_placed", {
+        email: hold.email,
+        seatNumber: hold.seatNumber,
+        code: hold.code
+    });
+
     return { success: true,
         hold : {
             seatNumber: hold.seatNumber,
@@ -203,6 +215,11 @@ function extendHold(email, code) {
 
   // Increase the extension count
   hold.extensions++;
+  eventLog.addEvent("hold_extended", {
+  email: hold.email,
+  seatNumber: hold.seatNumber,
+  code: hold.code
+});
 
   return {
     success: true,
@@ -276,6 +293,11 @@ function confirmHold(email, code) {
 
   // Confirm the hold
   hold.status = "confirmed";
+  eventLog.addEvent("hold_confirmed", {
+  email: hold.email,
+  seatNumber: hold.seatNumber,
+  code: hold.code
+});
 
   // Change the seat status
   const seat = seats.find(
@@ -328,6 +350,11 @@ function releaseHold(email, code) {
 
   // Change the hold status
   hold.status = "released";
+  eventLog.addEvent("hold_released", {
+  email: hold.email,
+  seatNumber: hold.seatNumber,
+  code: hold.code
+});
 
   // Find the seat
   const seat = seats.find(
@@ -424,10 +451,73 @@ function joinWaitlist(email) {
     joinedAt: Date.now()
   });
 
+  eventLog.addEvent("waitlist_joined", {
+  email
+});
+
   return {
     success: true,
     message: "You have been added to the waitlist."
   };
+}
+
+// Promote the first person on the waitlist
+function promoteFromWaitlist() {
+  const waitingUser = waitlist.shift();
+
+  // No one is waiting
+  if (!waitingUser) {
+    return;
+  }
+
+  // Find an available seat
+  const seat = seats.find(
+    (seat) => seat.status === "available"
+  );
+
+  // If no seat is available, put the user back
+  if (!seat) {
+    waitlist.unshift(waitingUser);
+    return;
+  }
+
+  // Generate a unique hold code
+  let code = generateHoldCode();
+
+  while (codeExists(code)) {
+    code = generateHoldCode();
+  }
+
+  // Create a normal hold
+  const expirationTime = Date.now() + config.holdDuration;
+
+  const hold = {
+    email: waitingUser.email,
+    seatNumber: seat.number,
+    code,
+    expirationTime,
+    extensions: 0,
+    status: "active",
+    createdAt: Date.now(),
+    fromWaitlist: true
+  };
+
+  holds.push(hold);
+
+  // Change the seat status
+  seat.status = "held";
+
+  // Record the promotion
+  eventLog.addEvent("waitlist_promoted", {
+    email: waitingUser.email,
+    seatNumber: seat.number,
+    code
+  });
+
+  // Notify the user through the server console
+  console.log(
+    `WAITLIST: ${waitingUser.email} has been given seat ${seat.number}. Hold code: ${code}`
+  );
 }
 
 module.exports = {

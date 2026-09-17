@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const eventLog = require("./eventLog");
 
 const reservationService = require("./reservationService");
 
@@ -146,6 +147,23 @@ function promoteFromWaitlist() {
     `WAITLIST: ${waitingUser.email} has been given seat ${seat.number}. Hold code: ${code}`
   );
 }
+
+app.get("/api/events", (req, res) => {
+  const events = eventLog.getEvents();
+
+  const seatNumber = req.query.seatNumber;
+
+  const filteredEvents = seatNumber
+    ? events.filter(
+        (event) => event.seatNumber === Number(seatNumber)
+      )
+    : events;
+
+  res.json({
+    success: true,
+    events: filteredEvents
+  });
+});
 
 const PORT = 3000;
 
