@@ -2,6 +2,7 @@ const config = require("./config");
 
 const seats = [];
 const holds = [];
+const waitlist = [];
 
 // Create the seats when the application starts
 for (let i = 1; i <= config.totalSeats; i++) {
@@ -49,6 +50,7 @@ function removeExpiredHolds() {
 
       if (seat) {
         seat.status = "available";
+        promoteFromWaitlist();
       }
     }
   });
@@ -335,6 +337,7 @@ function releaseHold(email, code) {
   // Make the seat available again
   if (seat) {
     seat.status = "available";
+    promoteFromWaitlist();
   }
 
   return {
@@ -344,10 +347,94 @@ function releaseHold(email, code) {
   };
 }
 
+// Add a user to the waitlist
+function joinWaitlist(email) {
+
+  // Check if email was provided
+  if (!email) {
+    return {
+      success: false,
+      statusCode: 400,
+      error: "Email is required."
+    };
+  }
+
+  // Remove expired holds first
+  removeExpiredHolds();
+
+  // Check if a seat is available
+  const availableSeat = seats.find(
+    (seat) => seat.status === "available"
+  );
+
+  if (availableSeat) {
+    return {
+      success: false,
+      statusCode: 409,
+      error: "A seat is currently available. You can place a hold instead."
+    };
+  }
+
+  // Check if the user is already on the waitlist
+  const alreadyWaiting = waitlist.some(
+    (entry) => entry.email === email
+  );
+
+  if (alreadyWaiting) {
+    return {
+      success: false,
+      statusCode: 409,
+      error: "You are already on the waitlist."
+    };
+  }
+
+  // Check if the user already has an active hold
+  const activeHold = holds.some(
+    (hold) =>
+      hold.email === email &&
+      hold.status === "active"
+  );
+
+  if (activeHold) {
+    return {
+      success: false,
+      statusCode: 409,
+      error: "You already have an active hold."
+    };
+  }
+
+  // Check if the user already has a confirmed seat
+  const confirmedHold = holds.some(
+    (hold) =>
+      hold.email === email &&
+      hold.status === "confirmed"
+  );
+
+  if (confirmedHold) {
+    return {
+      success: false,
+      statusCode: 409,
+      error: "You already have a confirmed seat."
+    };
+  }
+
+  // Add user to the waitlist
+  waitlist.push({
+    email,
+    joinedAt: Date.now()
+  });
+
+  return {
+    success: true,
+    message: "You have been added to the waitlist."
+  };
+}
+
 module.exports = {
   getSeats,
   placeHold,
   removeExpiredHolds,
+  joinWaitlist,
   extendHold,
   confirmHold,
   releaseHold

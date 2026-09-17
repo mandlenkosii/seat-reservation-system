@@ -78,6 +78,75 @@ app.post("/api/holds/release", (req, res) => {
   res.json(result);
 });
 
+app.post("/api/waitlist", (req, res) => {
+  const { email } = req.body;
+
+  const result = reservationService.joinWaitlist(email);
+
+  if (!result.success) {
+    return res.status(result.statusCode).json({
+      success: false,
+      error: result.error
+    });
+  }
+
+  res.status(201).json(result);
+});
+
+// Give an available seat to the first person on the waitlist
+function promoteFromWaitlist() {
+
+  // Find the first person waiting
+  const waitingUser = waitlist.shift();
+
+  if (!waitingUser) {
+    return;
+  }
+
+  // Find an available seat
+  const seat = seats.find(
+    (seat) => seat.status === "available"
+  );
+
+  if (!seat) {
+    // Put the user back if no seat is available
+    waitlist.unshift(waitingUser);
+    return;
+  }
+
+  // Generate a unique hold code
+  let code = generateHoldCode();
+
+  while (codeExists(code)) {
+    code = generateHoldCode();
+  }
+
+  // Create a normal 60-second hold
+  const expirationTime =
+    Date.now() + config.holdDuration;
+
+  const hold = {
+    email: waitingUser.email,
+    seatNumber: seat.number,
+    code,
+    expirationTime,
+    extensions: 0,
+    status: "active",
+    createdAt: Date.now(),
+    fromWaitlist: true
+  };
+
+  holds.push(hold);
+
+  // Mark the seat as held
+  seat.status = "held";
+
+  // Notify the user through the server log
+  console.log(
+    `WAITLIST: ${waitingUser.email} has been given seat ${seat.number}. Hold code: ${code}`
+  );
+}
+
 const PORT = 3000;
 
 app.listen(PORT, () => {
