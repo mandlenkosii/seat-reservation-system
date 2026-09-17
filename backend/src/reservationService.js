@@ -294,10 +294,61 @@ function confirmHold(email, code) {
   };
 }
 
+// Release a held or confirmed seat
+function releaseHold(email, code) {
+  // Find the hold
+  const hold = holds.find(
+    (hold) =>
+      hold.email === email &&
+      hold.code === code
+  );
+
+  // Check if the hold exists
+  if (!hold) {
+    return {
+      success: false,
+      statusCode: 404,
+      error: "Hold not found."
+    };
+  }
+
+  // Check if the hold can be released
+  if (
+    hold.status !== "active" &&
+    hold.status !== "confirmed"
+  ) {
+    return {
+      success: false,
+      statusCode: 409,
+      error: "This hold has already been released or expired."
+    };
+  }
+
+  // Change the hold status
+  hold.status = "released";
+
+  // Find the seat
+  const seat = seats.find(
+    (seat) => seat.number === hold.seatNumber
+  );
+
+  // Make the seat available again
+  if (seat) {
+    seat.status = "available";
+  }
+
+  return {
+    success: true,
+    message: "Seat released successfully.",
+    seatNumber: hold.seatNumber
+  };
+}
+
 module.exports = {
   getSeats,
   placeHold,
   removeExpiredHolds,
   extendHold,
-  confirmHold
+  confirmHold,
+  releaseHold
 };
