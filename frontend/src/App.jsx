@@ -33,15 +33,15 @@ function App() {
   }, []);
 
   useEffect(() => {
+    if (page === "events") {
+      loadEvents();
+    }
+  }, [eventSeatFilter, page]);
+
+  useEffect(() => {
     if (!expirationTime) {
       return;
     }
-
-    useEffect(() => {
-      if (page === "events") {
-        loadEvents();
-      }
-    }, [eventSeatFilter, page]);
 
     const timer = setInterval(() => {
       const remaining = Math.max(
@@ -72,24 +72,25 @@ function App() {
       },
       body: JSON.stringify({
         email,
-        seatNumber,
+        seatNumber: Number(seatNumber),
       }),
     });
 
     const data = await response.json();
 
-    if (!data.success) {
-      setMessage(data.error);
-      return;
+    console.log("Hold response:", data);
+
+    if (data.success) {
+      setMessage(`Seat ${data.hold.seatNumber} held successfully!`);
+
+      setCode(data.hold.code);
+      setExpirationTime(data.hold.expirationTime);
+      setTimeLeft(Math.ceil((data.hold.expirationTime - Date.now()) / 1000));
+
+      await loadSeats();
+    } else {
+      setMessage(data.error || "Unable to place hold.");
     }
-
-    setMessage(
-      `Seat ${data.hold.seatNumber} held successfully. Code: ${data.hold.code}`,
-    );
-
-    setCode(data.hold.code);
-    setExpirationTime(data.hold.expirationTime);
-    loadSeats();
   };
 
   // Join waitlist
